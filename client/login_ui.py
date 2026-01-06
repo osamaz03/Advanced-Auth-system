@@ -12,6 +12,8 @@ class AdvancedAuthSystem(QWidget):
         self.setWindowTitle("Login")
         self.resize(400,300)
 
+        self.token = None
+
         layout = QVBoxLayout(self)
 
         palette = QPalette()
@@ -38,6 +40,12 @@ class AdvancedAuthSystem(QWidget):
         self.register_btn.clicked.connect(self.register)
         self.register_btn.setFont(QFont("San Francisco",14))
         layout.addWidget(self.register_btn)
+
+        self.dashboard_btn = QPushButton("Open Dashboard")
+        self.dashboard_btn.clicked.connect(self.open_dashboard)
+        self.dashboard_btn.setFont(QFont("San Francisco",14))
+        self.dashboard_btn.setEnabled(False)
+        layout.addWidget(self.dashboard_btn)
 
     
     def register(self):
@@ -71,11 +79,32 @@ class AdvancedAuthSystem(QWidget):
 
         r = requests.post(f"{SERVER_URL}/login",json=data)
         res = r.json()
+        try:
+            if "token" in res:
+                self.token = res["token"]
+                QMessageBox.information(self,"success","Login successful")
+                self.dashboard_btn.setEnabled(True)
+            else:
+                QMessageBox.warning(self,"error","Login failed")
+        except Exception as e:
+            QMessageBox.critical(self,"Network Error",str(e))
+    
+    def open_dashboard(self):
+        headers = {
+            "Authorization":self.token
+        }
 
-        if "error" in res:
-            QMessageBox.warning(self,"register info",res["error"])
-        else:
-            QMessageBox.information(self,"success","welcome")
+        try:
+            r = requests.get(f"{SERVER_URL}/protected",headers=headers)
+            res = r.json()
+
+            if "message" in res:
+                QMessageBox.information(self,"Dashboard",res["message"])
+            else:
+                QMessageBox.warning(self,"Error",res.get("error","Access denied"))
+        except Exception as e:
+            QMessageBox.critical(self,"Network Error",str(e))
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
